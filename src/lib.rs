@@ -164,6 +164,49 @@ where
         result
     }
 
+    /// Obtain a tuple of the secondary key and a reference to the value,
+    /// using the primary key
+    pub fn get_with_key(&self, key: &K1) -> Option<(&K2, &V)> {
+        let mut result = None;
+        if let Some(pair) = self.value_map.get(key) {
+            result = Some((&pair.0, &pair.1))
+        }
+        result
+    }
+
+    /// Obtain a tuple of the secondary key and a mutable reference to the value,
+    /// using the primary key
+    pub fn get_mut_with_key(&mut self, key: &K1) -> Option<(&K2, &mut V)> {
+        let mut result = None;
+        if let Some(pair) = self.value_map.get_mut(key) {
+            result = Some((&pair.0, &mut pair.1))
+        }
+        result
+    }
+
+    /// Obtain a tuple of the primary key and a reference to the value,
+    /// using the secondary key
+    pub fn get_alt_with_key(&self, key: &K2) -> Option<(&K1, &V)> {
+        let mut result = None;
+        if let Some(key_a) = self.key_map.get(key) {
+            if let Some(pair) = self.value_map.get(key_a) {
+                result = Some((key_a, &pair.1))
+            }
+        }
+        result
+    }
+    /// Obtain a tuple of the primary key and a mutual reference to the value,
+    /// using the secondary key
+    pub fn get_mut_alt_with_key(&mut self, key: &K2) -> Option<(&K1, &mut V)> {
+        let mut result = None;
+        if let Some(key_a) = self.key_map.get(key) {
+            if let Some(pair) = self.value_map.get_mut(key_a) {
+                result = Some((key_a, &mut pair.1))
+            }
+        }
+        result
+    }
+
     /// Remove an item from the HashMap using the primary key. The value for the
     /// given key is returned (if it exists), just like a HashMap. This removes
     /// an item from the main HashMap, and the second `<K2, K1>` HashMap.
@@ -662,6 +705,33 @@ mod test {
         assert!(*map.get(&2).unwrap() == "Zwei!");
         assert!(map.get_alt(&"Three") == None);
         assert!(map.get(&3) == None);
+    }
+    #[test]
+    fn test_get_with_key() {
+        use super::MultiMap;
+        let mut map = MultiMap::new();
+        map.insert(1, "One", String::from("Ein"));
+        map.insert(2, "Two", String::from("Zwei"));
+        map.insert(3, "Three", String::from("Drei"));
+        assert!(*map.get_with_key(&1).unwrap().0 == "One");
+        assert!(*map.get_with_key(&1).unwrap().1 == String::from("Ein"));
+        assert!(*map.get_with_key(&2).unwrap().0 == "Two");
+        assert!(*map.get_with_key(&2).unwrap().1 == String::from("Zwei"));
+        assert!(*map.get_with_key(&3).unwrap().0 == "Three");
+        assert!(*map.get_with_key(&3).unwrap().1 == String::from("Drei"));
+        let pair = map.get_mut_with_key(&1).unwrap();
+        assert!(pair.0 == &"One");
+        pair.1.push_str("s");
+        assert!(*map.get_alt_with_key(&"One").unwrap().0 == 1);
+        assert!(*map.get_alt_with_key(&"One").unwrap().1 == String::from("Eins"));
+        assert!(*map.get_alt_with_key(&"Two").unwrap().0 == 2);
+        assert!(*map.get_alt_with_key(&"Two").unwrap().1 == String::from("Zwei"));
+        assert!(*map.get_alt_with_key(&"Three").unwrap().0 == 3);
+        assert!(*map.get_alt_with_key(&"Three").unwrap().1 == String::from("Drei"));
+        let pair = map.get_mut_alt_with_key(&"One").unwrap();
+        assert!(pair.0 == &1);
+        pair.1.push_str("s");
+        assert!(*map.get_with_key(&1).unwrap().1 == String::from("Einss"));
     }
     #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
     struct MultiCount<'a>(i32, &'a str, &'a str);
